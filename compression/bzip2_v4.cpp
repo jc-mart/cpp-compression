@@ -8,7 +8,7 @@
 #include <array>
 
 #include <timer.h>
-
+#include <omp.h>
 #include <sys/stat.h>
 // check if file already exists (w/o using c++17)
 bool file_exists( const std::string& filename )

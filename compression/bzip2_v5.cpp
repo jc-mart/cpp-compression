@@ -58,55 +58,47 @@ compress_chunk( const std::vector<char>& idata )
 }
 
 
-std::array<size_t, 3> compress_stream(FILE *istream, FILE *ostream) {
-    // How big are the input chunks?
-    // The compression level switch is [1-9] which means 100-900k.
-    size_t chunk_size = bz_compression_level * 100 * 1024;
-
+std::array<size_t, 3> compress_stream(FILE* istream, FILE* ostream) {
+    size_t chunk_size = BZIP_COMPRESSION_LEVEL * 100 * 1024;
     int n_chunks = 0;
     size_t ibytes = 0;
     size_t obytes = 0;
 
-    // While not at end of file marker
+    // Use a vector to store compressed data for each chunk
+    std::vector<std::vector<char>> compressed_chunks;
+
     while (not(feof(istream))) {
-        int privateNumberOfChunks = 0;
+        // Space for the input stream data.
+        std::vector<char> chunk(chunk_size);
 
-        #pragma omp parallel for reduction(+:privateNumberOfChunks)
-        for (int i = -1; i < n_chunks; i++) {
+        // Read a chunk of data from the input stream.
+        auto bytes_read = fread(chunk.data(), sizeof(char), chunk_size, istream);
 
-            // Space for the input stream data.
-            std::vector<char> chunk(chunk_size);
+        ibytes += bytes_read;
 
-            // Read a chunk of data from the input stream.
-            auto bytes_read = fread(chunk.data(), sizeof(char), chunk_size, istream);
+        if (bytes_read < chunk_size)
+            chunk.resize(bytes_read);
 
-            // for debugging
-            ibytes += bytes_read;
+        // Use a temporary vector to store compressed data for each chunk
+        std::vector<char> odata = compress_chunk(chunk);
 
-            if (bytes_read < chunk_size)
-                chunk.resize(bytes_read);
+        obytes += odata.size();
 
-            auto odata = compress_chunk(chunk);
+        compressed_chunks.push_back(std::move(odata));
 
-            obytes += odata.size();
+        if (verbose > 1)
+            fprintf(stderr, "chunk: %d, idata: %lu, odata: %lu\n", n_chunks, bytes_read, odata.size());
 
-            #pragma omp critical
-            {
-                fwrite(odata.data(), sizeof(char), odata.size(), ostream);
-            }
+        n_chunks++;
+    }
 
-            if (verbose > 1)
-                fprintf(stderr, "chunk: %d, idata: %lu, odata: %lu\n", i, bytes_read, odata.size());
-
-            privateNumberOfChunks++;
-        }
-
-        // avoid race conditions
+    // Use a critical section to ensure ordered file writing
+    #pragma omp parallel for
+    for (int i = 0; i < n_chunks; ++i) {
         #pragma omp critical
         {
-            n_chunks += privateNumberOfChunks;
+            fwrite(compressed_chunks[i].data(), sizeof(char), compressed_chunks[i].size(), ostream);
         }
-
     }
 
     return {size_t(n_chunks), ibytes, obytes};
