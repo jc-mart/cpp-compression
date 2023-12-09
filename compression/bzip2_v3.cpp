@@ -58,7 +58,7 @@ compress_chunk( const std::vector<char>& idata )
 }
 
 
-std::array<size_t, 3> compressStream(FILE *istream, FILE *ostream) {
+std::array<size_t, 3> compress_stream(FILE *istream, FILE *ostream) {
     // How big are the input chunks?
     // The compression level switch is [1-9] which means 100-900k.
     size_t chunk_size = bz_compression_level * 100 * 1024;
