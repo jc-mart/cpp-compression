@@ -61,7 +61,8 @@ std::array<size_t,3>
 compress_stream( FILE* istream, FILE* ostream )
 {
     size_t chunk_size = bz_compression_level * 100 * 1024;
-    int K = 10; // number of blocks to read, compress, and write at a time
+    int K = 16; // number of blocks to read, compress, and write at a time
+    int J = 0
 
     int n_chunks = 0;
     size_t ibytes = 0;
@@ -74,7 +75,7 @@ compress_stream( FILE* istream, FILE* ostream )
         std::vector<std::vector<char>> odata(K);
 
         // Read K blocks of data from the input stream.
-        for (int i = 0; i < K && !feof(istream); ++i)
+        for (int i = 0; i < K && not(feof(istream)); ++i)
         {
             bytes_read[i] = fread(chunks[i].data(), sizeof(char), chunk_size, istream);
             ibytes += bytes_read[i];
